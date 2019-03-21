@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import debounce from 'debounce';
 import { IMenuItem } from '../../services/MenuStore';
 import { SearchStore } from '../../services/SearchStore';
 import { MenuItem } from '../SideMenu/MenuItem';
@@ -41,14 +42,8 @@ export class SearchBox extends React.PureComponent<SearchBoxProps, SearchBoxStat
       term: '',
       activeItemIdx: -1,
     };
-  }
 
-  clearResults(term: string) {
-    this.setState({
-      results: [],
-      term,
-    });
-    this.props.marker.unmark();
+    this.searchResults = debounce(this.searchResults, 300);
   }
 
   clear = () => {
@@ -91,32 +86,30 @@ export class SearchBox extends React.PureComponent<SearchBoxProps, SearchBoxStat
     }
   };
 
-  setResults(results: SearchResult[], term: string) {
-    this.setState({
-      results,
-      term,
-    });
-    this.props.marker.mark(term);
+  searchResults() {
+    const { term } = this.state;
+
+    if (term.length < 3) {
+      this.setState({ results: [] });
+      this.props.marker.unmark();
+    } else {
+      this.props.search.search(term).then(results => {
+        this.setState({ results });
+        this.props.marker.mark(term);
+      });
+    }
   }
 
   search = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const q = event.target.value;
-    if (q.length < 3) {
-      this.clearResults(q);
-      return;
-    }
+    const term = event.target.value;
 
-    this.setState({
-      term: q,
-    });
-
-    this.props.search.search(event.target.value).then(res => {
-      this.setResults(res, q);
+    this.setState({ term }, () => {
+      this.searchResults();
     });
   };
 
   render() {
-    const { activeItemIdx } = this.state;
+    const { activeItemIdx, term } = this.state;
     const results = this.state.results.map(res => ({
       item: this.props.getItemById(res.meta)!,
       score: res.score,
@@ -126,10 +119,10 @@ export class SearchBox extends React.PureComponent<SearchBoxProps, SearchBoxStat
 
     return (
       <SearchWrap role="search">
-        {this.state.term && <ClearIcon onClick={this.clear}>×</ClearIcon>}
+        {term && <ClearIcon onClick={this.clear}>×</ClearIcon>}
         <SearchIcon />
         <SearchInput
-          value={this.state.term}
+          value={term}
           onKeyDown={this.handleKeyDown}
           placeholder="Search..."
           type="text"
