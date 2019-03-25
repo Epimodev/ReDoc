@@ -43,7 +43,7 @@ export class SearchBox extends React.PureComponent<SearchBoxProps, SearchBoxStat
       activeItemIdx: -1,
     };
 
-    this.searchResults = debounce(this.searchResults, 300);
+    this.searchResults = debounce(this.searchResults, 2000);
   }
 
   clear = () => {
